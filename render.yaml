@@ -47,6 +47,12 @@ services:
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
+    # SPA fallback: serve index.html for all routes so /login, /book, etc.
+    # work on direct visits and refreshes (Render ignores _redirects files).
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       # Live backend (Render suffixed the name at first deploy).
       - key: VITE_API_URL
