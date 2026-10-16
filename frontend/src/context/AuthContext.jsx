@@ -1,36 +1,37 @@
 import { createContext, useContext, useCallback, useEffect, useState } from 'react';
 import { setAuthToken } from '../api/client.js';
+import { authClient } from '../lib/authClient.js';
 
-// Wraps Neon Auth (Better Auth). In production, replace the dev stub with
-// @better-auth/react `useSession` / `authClient.token()` and pass the JWT here.
+// Real Neon Auth session via better-auth, with paste-JWT fallback for local dev.
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('hms.token') || '');
-  const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('hms.user') || 'null'); } catch { return null; }
-  });
+  const [devToken, setDevToken] = useState(() => localStorage.getItem('hms.token') || '');
+  const { data: session } = authClient.useSession();
+  const jwt = session?.session?.token || devToken || '';
+  const user = session?.user
+    ? { email: session.user.email, name: session.user.name }
+    : (() => { try { return JSON.parse(localStorage.getItem('hms.user') || 'null'); } catch { return null; } })();
 
   useEffect(() => {
-    setAuthToken(token || '');
-    if (token) localStorage.setItem('hms.token', token);
+    setAuthToken(jwt);
+    if (devToken) localStorage.setItem('hms.token', devToken);
     else localStorage.removeItem('hms.token');
-  }, [token]);
+  }, [jwt, devToken]);
 
-  // Dev-only login: paste a Neon Auth JWT (or use real Better Auth client).
-  const login = useCallback((jwt, profile) => {
-    setToken(jwt);
-    setUser(profile || null);
+  const login = useCallback((token, profile) => {
+    setDevToken(token);
     if (profile) localStorage.setItem('hms.user', JSON.stringify(profile));
   }, []);
 
-  const logout = useCallback(() => {
-    setToken(''); setUser(null);
+  const logout = useCallback(async () => {
+    try { await authClient.signOut(); } catch { /* no server session */ }
+    setDevToken('');
     localStorage.removeItem('hms.user');
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthenticated: !!token, login, logout }}>
+    <AuthContext.Provider value={{ token: jwt, user, isAuthenticated: !!jwt, login, logout, authClient }}>
       {children}
     </AuthContext.Provider>
   );

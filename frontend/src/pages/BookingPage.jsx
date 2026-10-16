@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { format, addDays } from 'date-fns';
 import { useRooms, useBook } from '../hooks/queries.js';
 import Modal from '../components/Modal.jsx';
+import BookingCalendar from '../components/BookingCalendar.jsx';
 
 const today = () => format(new Date(), 'yyyy-MM-dd');
 
 export default function BookingPage() {
-  const [checkIn, setCheckIn] = useState(today());
-  const [checkOut, setCheckOut] = useState(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
+  const [range, setRange] = useState({ checkIn: today(), checkOut: format(addDays(new Date(), 1), 'yyyy-MM-dd') });
+  const { checkIn, checkOut } = range;
   const [selected, setSelected] = useState(null);
   const valid = checkOut > checkIn;
   const { data: rooms = [], isLoading, refetch } = useRooms(valid ? { checkIn, checkOut } : null);
@@ -21,10 +22,9 @@ export default function BookingPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Book a room</h1>
-      <div className="flex gap-3 mb-4 items-end">
-        <label>Check-in <input type="date" value={checkIn} min={today()} onChange={(e) => setCheckIn(e.target.value)} className="border rounded px-2 py-1" /></label>
-        <label>Check-out <input type="date" value={checkOut} min={checkIn} onChange={(e) => setCheckOut(e.target.value)} className="border rounded px-2 py-1" /></label>
-        <button onClick={() => refetch()} disabled={!valid} className="bg-slate-900 text-white px-4 py-1 rounded disabled:opacity-40">Search</button>
+      <div className="flex gap-4 mb-4 flex-wrap items-start">
+        <BookingCalendar checkIn={checkIn} checkOut={checkOut} onChange={setRange} />
+        <button onClick={() => refetch()} disabled={!valid} className="bg-slate-900 text-white px-4 py-2 rounded disabled:opacity-40">Search</button>
       </div>
       {!valid && <p className="text-red-600 text-sm mb-4">Check-out must be after check-in.</p>}
       {isLoading ? <p>Searching…</p> : (

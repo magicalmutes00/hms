@@ -36,9 +36,10 @@ services:
       # guards the entity mapping. Apply future DDL manually, then bump this.
       - key: SPRING_FLYWAY_ENABLED
         value: 'false'
-      # Must match the frontend service URL below.
+      # Bearer-JWT auth (no cookies), so any frontend origin works. Tighten to an
+      # exact origin list once the frontend URL is stable.
       - key: CORS_ORIGINS
-        value: https://hms-frontend.onrender.com
+        value: '*'
 
   - type: web
     name: hms-frontend
@@ -47,6 +48,8 @@ services:
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
-      # Must match the backend service URL above (Vite bakes this in at build time).
+      # Live backend (Render suffixed the name at first deploy).
       - key: VITE_API_URL
-        value: https://hms-backend.onrender.com/api
+        value: https://hms-backend-gte9.onrender.com/api
+      - key: VITE_AUTH_URL
+        value: https://ep-broad-mode-b4tt0xx2.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth

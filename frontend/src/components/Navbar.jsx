@@ -14,6 +14,7 @@ export default function Navbar() {
       <Link to="/my-bookings" className="hover:underline">My bookings</Link>
       <Link to="/front-desk" className="hover:underline">Front Desk</Link>
       <Link to="/housekeeping" className="hover:underline">Housekeeping</Link>
+      <Link to="/admin" className="hover:underline">Admin</Link>
       <span className="ml-auto flex items-center gap-3">
         {isAuthenticated ? (
           <>

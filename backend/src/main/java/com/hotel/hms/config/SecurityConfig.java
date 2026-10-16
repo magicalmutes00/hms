@@ -50,10 +50,17 @@ public class SecurityConfig implements WebMvcConfigurer {
   @Bean
   CorsConfigurationSource corsSource() {
     var cfg = new CorsConfiguration();
-    cfg.setAllowedOrigins(Arrays.stream(allowedOrigins.split(",")).map(String::trim).toList());
+    // Mobile/demo friendly: CORS_ORIGINS=* allows any origin WITHOUT cookies.
+    // Auth uses Bearer JWTs (not cookies), so this is safe for this API.
+    if ("*".equals(allowedOrigins.trim())) {
+      cfg.addAllowedOriginPattern("*");
+      cfg.setAllowCredentials(false);
+    } else {
+      cfg.setAllowedOrigins(Arrays.stream(allowedOrigins.split(",")).map(String::trim).toList());
+      cfg.setAllowCredentials(true);
+    }
     cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
     cfg.setAllowedHeaders(List.of("*"));
-    cfg.setAllowCredentials(true);
     var src = new UrlBasedCorsConfigurationSource();
     src.registerCorsConfiguration("/**", cfg);
     return src;

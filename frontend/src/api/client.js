@@ -31,4 +31,8 @@ export const endpoints = {
   updateTask: (id, body) => api.patch(`/housekeeping/${id}`, body).then((r) => r.data),
   createTask: (body) => api.post('/housekeeping', body).then((r) => r.data),
   presignUpload: (body) => api.post('/storage/presign-upload', body).then((r) => r.data),
+  createRoomType: (body) => api.post('/room-types', body).then((r) => r.data),
+  createRoom: (body) => api.post('/rooms', body).then((r) => r.data),
+  adminUsers: () => api.get('/admin/users').then((r) => r.data),
+  setUserRole: (id, role) => api.patch(`/admin/users/${id}/role`, null, { params: { role } }).then((r) => r.data),
 };
