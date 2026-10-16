@@ -10,6 +10,7 @@ import FrontDeskDashboard from './pages/FrontDeskDashboard.jsx';
 import HousekeepingView from './pages/HousekeepingView.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
+import AdminDashboard from './pages/AdminDashboard.jsx';
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
 
