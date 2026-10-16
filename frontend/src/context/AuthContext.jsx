@@ -8,7 +8,13 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [devToken, setDevToken] = useState(() => localStorage.getItem('hms.token') || '');
   const { data: session } = authClient.useSession();
-  const jwt = session?.session?.token || devToken || '';
+  // Only send JWT-shaped tokens. The backend is an OAuth2 resource server:
+  // Spring answers 401 to *any* request (even public ones) carrying a
+  // malformed Bearer token, and Neon Auth issues opaque session tokens
+  // until its JWT plugin is enabled. Gating on JWT shape keeps public
+  // browsing (rooms, room types) working regardless.
+  const isJwt = (t) => typeof t === 'string' && t.split('.').length === 3;
+  const jwt = [session?.session?.token, devToken].find(isJwt) || '';
   const user = session?.user
     ? { email: session.user.email, name: session.user.name }
     : (() => { try { return JSON.parse(localStorage.getItem('hms.user') || 'null'); } catch { return null; } })();
