@@ -31,6 +31,11 @@ services:
         sync: false
       - key: NEON_S3_BUCKET
         value: hms-assets
+      # Schema is already migrated (V1+V2 applied). Flyway 10.x does not support
+      # Neon's PostgreSQL 18, so it stays off; JPA ddl-auto=validate still
+      # guards the entity mapping. Apply future DDL manually, then bump this.
+      - key: SPRING_FLYWAY_ENABLED
+        value: 'false'
       # Must match the frontend service URL below.
       - key: CORS_ORIGINS
         value: https://hms-frontend.onrender.com
