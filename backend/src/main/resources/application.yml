@@ -25,19 +25,17 @@ spring:
     locations: classpath:db/migration
     default-schema: public
     baseline-on-migrate: true
-
-server:
-  port: ${PORT:8080}
-  error:
-    include-message: always
-
-spring:
   security:
     oauth2:
       resourceserver:
         jwt:
           issuer-uri: ${NEON_AUTH_URL:http://localhost:3000/api/auth}
           jwk-set-uri: ${NEON_JWKS_URL:${NEON_AUTH_URL:http://localhost:3000/api/auth}/jwks}
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
 
 neon:
   storage:
