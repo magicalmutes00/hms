@@ -1,5 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { endpoints } from '../api/client.js';
+import { useAuth } from '../context/AuthContext.jsx';
+
+export const useMe = () => {
+  const { isAuthenticated } = useAuth();
+  return useQuery({ queryKey: ['me'], queryFn: endpoints.me, enabled: isAuthenticated });
+};
+
+export const useAvailability = (roomId, month) =>
+  useQuery({
+    queryKey: ['availability', roomId, month],
+    queryFn: () => endpoints.availability(roomId, month),
+    enabled: !!roomId && !!month,
+  });
+
+export const useAdminStats = () =>
+  useQuery({ queryKey: ['admin-stats'], queryFn: endpoints.adminStats });
+
+export const useStaff = () =>
+  useQuery({ queryKey: ['staff'], queryFn: endpoints.staff });
 
 export const useRooms = (params) =>
   useQuery({ queryKey: ['rooms', params], queryFn: () => endpoints.rooms(params) });

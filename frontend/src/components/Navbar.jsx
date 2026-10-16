@@ -1,20 +1,24 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Hotel, CalendarRange, ClipboardCheck, ShieldCheck, LogOut, Menu, X } from 'lucide-react';
+import { useMe } from '../hooks/queries.js';
+import { Hotel, LogOut, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+
+const ALL_LINKS = [
+  { to: '/', label: 'Home', roles: null },
+  { to: '/book', label: 'Book', roles: null },
+  { to: '/my-bookings', label: 'My bookings', roles: null },
+  { to: '/front-desk', label: 'Front desk', roles: ['ADMIN', 'RECEPTIONIST'] },
+  { to: '/housekeeping', label: 'Housekeeping', roles: ['ADMIN', 'RECEPTIONIST', 'HOUSEKEEPER'] },
+  { to: '/admin', label: 'Admin', roles: ['ADMIN'] },
+];
 
 export default function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
+  const { data: me } = useMe();
   const [open, setOpen] = useState(false);
-
-  const links = [
-    { to: '/', label: 'Home' },
-    { to: '/book', label: 'Book' },
-    { to: '/my-bookings', label: 'My bookings' },
-    { to: '/front-desk', label: 'Front desk' },
-    { to: '/housekeeping', label: 'Housekeeping' },
-    { to: '/admin', label: 'Admin' },
-  ];
+  const role = me?.role;
+  const links = ALL_LINKS.filter((l) => !l.roles || (role && l.roles.includes(role)));
 
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur">
@@ -38,6 +42,9 @@ export default function Navbar() {
           {isAuthenticated ? (
             <>
               <span className="text-sm text-slate-500">{user?.email || 'Signed in'}</span>
+              {role && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs ring-1 ring-slate-200">{role}</span>
+              )}
               <button onClick={logout} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium transition hover:bg-slate-50">
                 <LogOut className="h-4 w-4" /> Logout
               </button>

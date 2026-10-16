@@ -1,54 +1,79 @@
-import { useQuery } from '@tanstack/react-query';
-import { endpoints } from '../api/client.js';
-import { useAuth } from '../context/AuthContext.jsx';
-import { Hotel, ClipboardList, Sparkles, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAdminStats } from '../hooks/queries.js';
+import { Hotel, ClipboardList, Users, Sparkles, BedDouble } from 'lucide-react';
 
-export default function AdminPage() {
-  const { data: users = [] } = useQuery({ queryKey: ['admin-users'], queryFn: endpoints.adminUsers });
-  const { user } = useAuth();
+export default function AdminDashboard() {
+  const { data: s, isLoading } = useAdminStats();
+  const res = s?.reservationsByStatus || {};
+  const tasks = s?.tasksByStatus || {};
+
+  const cards = [
+    ['Users', s?.users ?? '—', Users, '/admin/manage'],
+    ['Rooms', `${s?.roomsOccupied ?? '—'}/${s?.rooms ?? '—'} occupied`, BedDouble, '/admin/manage'],
+    ['Occupancy', `${s?.occupancyPct ?? '—'}%`, Hotel, '/front-desk'],
+    ['Open tasks', (tasks.TODO || 0) + (tasks.IN_PROGRESS || 0), ClipboardList, '/housekeeping'],
+  ];
+
   return (
     <main className="bg-slate-50">
       <section className="mx-auto max-w-6xl px-6 py-8">
         <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Administration</h1>
-            <p className="text-slate-600">Manage room inventory, users, and platform settings.</p>
+            <p className="text-slate-600">Live platform overview and management.</p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm shadow-sm">
-            <ShieldCheck className="h-4 w-4 text-emerald-600" />
-            <span className="text-slate-600">{user?.email || 'Admin'}</span>
-          </div>
+          <Link to="/admin/manage" className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800">
+            Manage inventory & users
+          </Link>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Link to="/admin" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-600">Room types</span>
-              <ClipboardList className="h-5 w-5 text-slate-400" />
-            </div>
-            <p className="mt-1 text-2xl font-semibold">Create & manage</p>
-          </Link>
-          <Link to="/admin" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-600">Rooms</span>
-              <Hotel className="h-5 w-5 text-slate-400" />
-            </div>
-            <p className="mt-1 text-2xl font-semibold">Inventory</p>
-          </Link>
+          {cards.map(([label, value, Icon, to]) => (
+            <Link key={label} to={to} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-slate-600">{label}</span>
+                <Icon className="h-5 w-5 text-slate-400" />
+              </div>
+              <p className="mt-1 text-2xl font-semibold">{isLoading ? '…' : value}</p>
+            </Link>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-600">Users</span>
-              <Sparkles className="h-5 w-5 text-slate-400" />
-            </div>
-            <p className="mt-1 text-2xl font-semibold">{users.length}</p>
+            <h2 className="font-medium mb-3">Reservations by status</h2>
+            {isLoading ? <p className="text-slate-400">…</p> : (
+              <div className="space-y-2">
+                {['CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'CANCELLED', 'PENDING'].map((k) => (
+                  <div key={k} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">{k}</span>
+                    <span className="font-semibold">{res[k] || 0}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-slate-600">Access</span>
-              <ShieldCheck className="h-5 w-5 text-slate-400" />
-            </div>
-            <p className="mt-1 text-2xl font-semibold">RBAC enforced</p>
+            <h2 className="font-medium mb-3">Housekeeping by status</h2>
+            {isLoading ? <p className="text-slate-400">…</p> : (
+              <div className="space-y-2">
+                {['TODO', 'IN_PROGRESS', 'COMPLETED'].map((k) => (
+                  <div key={k} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-600">{k}</span>
+                    <span className="font-semibold">{tasks[k] || 0}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-slate-400" />
+            <p className="text-sm text-slate-600">
+              Checkout auto-creates a high-priority cleaning task; completing it releases the room back to available.
+            </p>
           </div>
         </div>
       </section>

@@ -23,6 +23,13 @@ public class HousekeepingService {
     return list.stream().map(HousekeepingTaskDto::from).toList();
   }
 
+  @Transactional(readOnly = true)
+  public List<UserProfileDto> staff() {
+    return users.findAll().stream()
+        .filter(u -> u.getRole() != Role.GUEST)
+        .map(UserProfileDto::from).toList();
+  }
+
   @Transactional
   public HousekeepingTaskDto create(UpsertTaskRequest req) {
     Room room = rooms.findById(req.roomId()).orElseThrow(() -> new ResourceNotFoundException("Room not found"));

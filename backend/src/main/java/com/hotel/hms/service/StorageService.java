@@ -5,6 +5,7 @@ import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.*;
@@ -13,6 +14,7 @@ import software.amazon.awssdk.services.s3.presigner.model.*;
 @RequiredArgsConstructor
 public class StorageService {
   private final S3Presigner presigner;
+  private final S3Client s3;
 
   @Value("${neon.storage.bucket}") private String bucket;
   @Value("${neon.storage.public-base-url:}") private String publicBaseUrl;
@@ -39,6 +41,10 @@ public class StorageService {
     var sig = presigner.presignGetObject(GetObjectPresignRequest.builder()
         .signatureDuration(Duration.ofMinutes(expiryMinutes)).getObjectRequest(req).build());
     return new PresignResponse(sig.url().toString(), k, publicUrl(k));
+  }
+
+  public void delete(String key) {
+    s3.deleteObject(b -> b.bucket(bucket).key(sanitize(key)));
   }
 
   private String publicUrl(String key) {

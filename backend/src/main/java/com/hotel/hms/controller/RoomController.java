@@ -5,6 +5,8 @@ import com.hotel.hms.entity.RoomStatus;
 import com.hotel.hms.service.RoomService;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -29,6 +31,14 @@ public class RoomController {
 
   @GetMapping("/room-types")
   public List<RoomTypeDto> types() { return rooms.allTypes(); }
+
+  @GetMapping("/rooms/{id}/availability")
+  public AvailabilityResponse availability(@PathVariable UUID id, @RequestParam String month) {
+    final YearMonth ym;
+    try { ym = YearMonth.parse(month); }
+    catch (DateTimeParseException e) { throw new IllegalArgumentException("month must be yyyy-MM"); }
+    return rooms.availability(id, ym);
+  }
 
   @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
   @PostMapping("/rooms")

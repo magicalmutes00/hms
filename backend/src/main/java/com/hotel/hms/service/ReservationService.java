@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReservationService {
 
   private final ReservationRepository reservations;
+  private final HousekeepingTaskRepository housekeeping;
   private final RoomRepository rooms;
   private final UserProfileRepository users;
   private static final SecureRandom RANDOM = new SecureRandom();
@@ -72,13 +73,19 @@ public class ReservationService {
         .orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
     if (!validTransition(r.getStatus(), target))
       throw new ConflictException("Illegal transition " + r.getStatus() + " -> " + target);
-    r.setStatus(target);
-    // Keep room status in sync for front-desk readability (best-effort, not load-bearing)
-    if (target == ReservationStatus.CHECKED_IN) r.getRoom().setStatus(RoomStatus.OCCUPIED);
-    if (target == ReservationStatus.CHECKED_OUT) r.getRoom().setStatus(RoomStatus.CLEANING);
     if (target == ReservationStatus.CANCELLED
         && r.getCheckInDate().isBefore(LocalDate.now().plusDays(1)))
       throw new ConflictException("Cannot cancel within 24h of check-in — contact front desk");
+    r.setStatus(target);
+    // Keep room status in sync for front-desk readability (best-effort, not load-bearing)
+    if (target == ReservationStatus.CHECKED_IN) r.getRoom().setStatus(RoomStatus.OCCUPIED);
+    if (target == ReservationStatus.CHECKED_OUT) {
+      r.getRoom().setStatus(RoomStatus.CLEANING);
+      housekeeping.save(HousekeepingTask.builder().room(r.getRoom())
+          .status(TaskStatus.TODO).priority(TaskPriority.HIGH)
+          .notes("Checkout clean after " + r.getBookingCode()).build());
+    }
+    if (target == ReservationStatus.CANCELLED) r.getRoom().setStatus(RoomStatus.AVAILABLE);
     return ReservationDto.from(r);
   }
 

@@ -26,4 +26,10 @@ public class StorageController {
   public PresignResponse download(@RequestParam String key) {
     return storage.presignDownload(key);
   }
+
+  @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
+  @DeleteMapping("/object")
+  public void delete(@RequestParam String key) {
+    storage.delete(key);
+  }
 }

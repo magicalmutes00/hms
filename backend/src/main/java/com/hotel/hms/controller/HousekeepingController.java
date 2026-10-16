@@ -32,4 +32,10 @@ public class HousekeepingController {
   public HousekeepingTaskDto update(@PathVariable UUID id, @RequestBody UpsertTaskRequest req) {
     return service.update(id, req);
   }
+
+  /** Non-guest users for the assignee dropdown (visible to all housekeeping roles). */
+  @GetMapping("/staff")
+  public List<UserProfileDto> staff() {
+    return service.staff();
+  }
 }

@@ -1,11 +1,30 @@
 import { useState } from 'react';
-import { useTasks, useUpdateTask } from '../hooks/queries.js';
-import { Filter, Clock, CheckCircle2, PlayCircle, DoorOpen } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useTasks, useUpdateTask, useStaff } from '../hooks/queries.js';
+import { endpoints } from '../api/client.js';
+import { useToast } from '../components/Toast.jsx';
+import { Filter, Clock, CheckCircle2, PlayCircle, DoorOpen, User } from 'lucide-react';
 
 export default function HousekeepingView() {
   const [status, setStatus] = useState('');
   const { data = [], isLoading } = useTasks(status || undefined);
+  const { data: staff = [] } = useStaff();
   const update = useUpdateTask();
+  const toast = useToast();
+  const qc = useQueryClient();
+
+  const act = (id, body, msg) => update.mutate({ id, body }, {
+    onSuccess: () => toast.push(msg),
+    onError: (e) => toast.push(e.message, 'error'),
+  });
+
+  const assign = async (id, staffId) => {
+    try {
+      await endpoints.updateTask(id, { roomId: undefined, assignedStaffId: staffId || null });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      toast.push('Assignee updated');
+    } catch (e) { toast.push(e.message, 'error'); }
+  };
 
   const chip = (s) => {
     const map = {
@@ -61,16 +80,25 @@ export default function HousekeepingView() {
                   <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
                     <span className="inline-flex items-center gap-1.5"><DoorOpen className="h-4 w-4" /> Room {t.roomNumber}</span>
                     {t.notes && <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4" /> {t.notes}</span>}
+                    {t.completedAt && <span className="inline-flex items-center gap-1.5 text-emerald-700"><CheckCircle2 className="h-4 w-4" /> {new Date(t.completedAt).toLocaleString()}</span>}
                   </div>
+                  <label className="inline-flex items-center gap-1.5 text-sm text-slate-600">
+                    <User className="h-4 w-4" />
+                    <select value={t.assignedStaffId || ''} onChange={(e) => assign(t.id, e.target.value)}
+                      className="border rounded px-2 py-1 bg-white text-sm">
+                      <option value="">Unassigned</option>
+                      {staff.map((s) => <option key={s.id} value={s.id}>{s.fullName} ({s.role})</option>)}
+                    </select>
+                  </label>
                 </div>
                 <div className="flex items-center gap-2">
                   {t.status !== 'IN_PROGRESS' && t.status !== 'COMPLETED' && (
-                    <button onClick={() => update.mutate({ id: t.id, body: { status: 'IN_PROGRESS' } })} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100">
+                    <button onClick={() => act(t.id, { status: 'IN_PROGRESS' }, 'Task started')} className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 transition hover:bg-amber-100">
                       <PlayCircle className="h-4 w-4" /> Start
                     </button>
                   )}
                   {t.status !== 'COMPLETED' && (
-                    <button onClick={() => update.mutate({ id: t.id, body: { status: 'COMPLETED' } })} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100">
+                    <button onClick={() => act(t.id, { status: 'COMPLETED' }, 'Task completed — room released')} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100">
                       <CheckCircle2 className="h-4 w-4" /> Complete
                     </button>
                   )}

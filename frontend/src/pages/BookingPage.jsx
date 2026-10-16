@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format, addDays } from 'date-fns';
-import { useRooms, useBook, useRoomTypes } from '../hooks/queries.js';
+import { useRooms, useBook, useRoomTypes, useAvailability } from '../hooks/queries.js';
+import { useToast } from '../components/Toast.jsx';
 import Modal from '../components/Modal.jsx';
 import BookingCalendar from '../components/BookingCalendar.jsx';
 import { BedDouble, CalendarRange, CheckCircle2 } from 'lucide-react';
@@ -10,15 +11,22 @@ const today = () => format(new Date(), 'yyyy-MM-dd');
 export default function BookingPage() {
   const [range, setRange] = useState({ checkIn: today(), checkOut: format(addDays(new Date(), 1), 'yyyy-MM-dd') });
   const { checkIn, checkOut } = range;
+  const [month, setMonth] = useState(() => today().slice(0, 7));
   const [selected, setSelected] = useState(null);
+  const [focusRoomId, setFocusRoomId] = useState('');
   const valid = checkOut > checkIn;
   const { data: rooms = [], isLoading, refetch } = useRooms(valid ? { checkIn, checkOut } : null);
   const { data: types = [] } = useRoomTypes();
+  const { data: avail } = useAvailability(focusRoomId, month);
   const book = useBook();
+  const toast = useToast();
 
   const confirm = async () => {
-    await book.mutateAsync({ roomId: selected.id, checkInDate: checkIn, checkOutDate: checkOut });
-    setSelected(null);
+    try {
+      const res = await book.mutateAsync({ roomId: selected.id, checkInDate: checkIn, checkOutDate: checkOut });
+      toast.push(`Booked! Code ${res.bookingCode}`);
+    } catch (e) { toast.push(e.message, 'error'); }
+    finally { setSelected(null); }
   };
 
   const typeMap = Object.fromEntries(types.map((t) => [t.id, t]));
@@ -47,7 +55,17 @@ export default function BookingPage() {
                 <p className="text-sm text-slate-500">Click start, then end date.</p>
               </div>
               <div className="p-4">
-                <BookingCalendar checkIn={checkIn} checkOut={checkOut} onChange={setRange} />
+                <BookingCalendar checkIn={checkIn} checkOut={checkOut}
+                  onChange={(r) => { setRange(r); setMonth(r.checkIn.slice(0, 7)); }}
+                  bookedDates={avail?.bookedDates || []} onMonthChange={setMonth} />
+                <label className="mt-3 block text-sm text-slate-600">
+                  Show availability for
+                  <select value={focusRoomId} onChange={(e) => setFocusRoomId(e.target.value)}
+                    className="mt-1 w-full border rounded px-2 py-1 bg-white">
+                    <option value="">— pick a room below —</option>
+                    {rooms.map((r) => <option key={r.id} value={r.id}>Room {r.roomNumber}</option>)}
+                  </select>
+                </label>
                 <button onClick={() => refetch()} disabled={!valid} className="mt-4 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-40">
                   Search availability
                 </button>
@@ -110,7 +128,7 @@ export default function BookingPage() {
                             <h3 className="font-medium">{r.roomTypeTitle}</h3>
                             <p className="text-sm text-slate-500">Floor {r.floor} · {r.status}</p>
                           </div>
-                          <button onClick={() => { book.reset(); setSelected(r); }} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800">
+                          <button onClick={() => { book.reset(); setSelected(r); setFocusRoomId(r.id); }} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800">
                             Select
                           </button>
                         </div>

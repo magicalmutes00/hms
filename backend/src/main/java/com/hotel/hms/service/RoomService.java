@@ -5,6 +5,7 @@ import com.hotel.hms.entity.*;
 import com.hotel.hms.exception.*;
 import com.hotel.hms.repository.*;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RoomService {
   private final RoomRepository rooms;
   private final RoomTypeRepository types;
+  private final ReservationRepository reservations;
 
   @Transactional(readOnly = true)
   public List<RoomDto> search(LocalDate in, LocalDate out, UUID typeId, Integer capacity) {
@@ -24,6 +26,20 @@ public class RoomService {
       return rooms.findAll().stream().map(RoomDto::from).toList();
     }
     return rooms.findAvailable(in, out, null, typeId, capacity).stream().map(RoomDto::from).toList();
+  }
+
+  @Transactional(readOnly = true)
+  public AvailabilityResponse availability(UUID roomId, YearMonth month) {
+    if (!rooms.existsById(roomId)) throw new ResourceNotFoundException("Room not found");
+    LocalDate start = month.atDay(1);
+    LocalDate end = month.atEndOfMonth();
+    List<LocalDate> booked = new ArrayList<>();
+    for (Reservation res : reservations.findActiveForRoom(roomId, start, end)) {
+      for (LocalDate d = res.getCheckInDate(); d.isBefore(res.getCheckOutDate()); d = d.plusDays(1)) {
+        if (!d.isBefore(start) && !d.isAfter(end)) booked.add(d);
+      }
+    }
+    return new AvailabilityResponse(roomId, month.toString(), booked.stream().distinct().sorted().toList());
   }
 
   @Transactional public RoomDto create(UpsertRoomRequest req) {

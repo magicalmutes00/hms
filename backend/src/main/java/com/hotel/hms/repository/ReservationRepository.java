@@ -30,4 +30,15 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID> 
   default boolean existsOverlapping(UUID roomId, LocalDate in, LocalDate out) {
     return existsOverlapping(roomId, in, out, null);
   }
+
+  @Query("""
+      select res from Reservation res
+      where res.room.id = :roomId
+        and res.status in ('PENDING','CONFIRMED','CHECKED_IN')
+        and res.checkInDate <= :end and res.checkOutDate >= :start
+      order by res.checkInDate
+      """)
+  List<Reservation> findActiveForRoom(@Param("roomId") UUID roomId,
+                                      @Param("start") LocalDate start,
+                                      @Param("end") LocalDate end);
 }
