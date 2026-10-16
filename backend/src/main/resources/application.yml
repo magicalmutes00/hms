@@ -55,7 +55,18 @@ app:
     code-length: 8
     max-nights: 90
 
-logging:
-  level:
-    com.hotel.hms: INFO
-    org.hibernate.SQL: WARN
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+  health:
+    probes:
+      enabled: true
+
+spring:
+  flyway:
+    enabled: false
