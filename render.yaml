@@ -1,0 +1,47 @@
+# Render Blueprint — deploys backend (Docker) + frontend (static) in one click.
+# Push this repo to GitHub, then Dashboard → New → Blueprint → select repo.
+# Secrets marked `sync: false` will be prompted for (never commit secrets here).
+# If Render renames a service (name taken), update the two cross-service URLs.
+services:
+  - type: web
+    name: hms-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DATABASE_URL
+        value: jdbc:postgresql://ep-broad-mode-b4tt0xx2-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channelBinding=require
+      - key: PGUSER
+        value: neondb_owner
+      - key: PGPASSWORD
+        sync: false
+      - key: NEON_AUTH_URL
+        value: https://ep-broad-mode-b4tt0xx2.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth
+      - key: NEON_JWKS_URL
+        value: https://ep-broad-mode-b4tt0xx2.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json
+      - key: NEON_S3_ENDPOINT
+        value: https://br-quiet-pine-b4dozzuw.storage.c-6.us-east-2.aws.neon.tech
+      - key: NEON_S3_REGION
+        value: us-east-2
+      - key: NEON_S3_ACCESS_KEY
+        sync: false
+      - key: NEON_S3_SECRET_KEY
+        sync: false
+      - key: NEON_S3_BUCKET
+        value: hms-assets
+      # Must match the frontend service URL below.
+      - key: CORS_ORIGINS
+        value: https://hms-frontend.onrender.com
+
+  - type: web
+    name: hms-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      # Must match the backend service URL above (Vite bakes this in at build time).
+      - key: VITE_API_URL
+        value: https://hms-backend.onrender.com/api

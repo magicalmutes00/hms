@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: hotel-management-system
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/hms?sslmode=require}
+    username: ${PGUSER:postgres}
+    password: ${PGPASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    default-schema: public
+    baseline-on-migrate: true
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${NEON_AUTH_URL:http://localhost:3000/api/auth}
+          jwk-set-uri: ${NEON_JWKS_URL:${NEON_AUTH_URL:http://localhost:3000/api/auth}/jwks}
+
+neon:
+  storage:
+    endpoint: ${NEON_S3_ENDPOINT:https://s3.neon.example.com}
+    region: ${NEON_S3_REGION:us-east-1}
+    access-key: ${NEON_S3_ACCESS_KEY:changeme}
+    secret-key: ${NEON_S3_SECRET_KEY:changeme}
+    bucket: ${NEON_S3_BUCKET:hms-assets}
+    public-base-url: ${NEON_S3_PUBLIC_URL:}
+    presign-expiry-minutes: 15
+    force-path-style: true
+
+app:
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+  booking:
+    code-length: 8
+    max-nights: 90
+
+logging:
+  level:
+    com.hotel.hms: INFO
+    org.hibernate.SQL: WARN
