@@ -28,16 +28,28 @@ function isExpiredJwt(token) {
 // A stale/invalid Bearer poisons even public endpoints (Spring 401s any
 // request with a bad token). Retry once without it; if the anonymous call
 // succeeds the token was the problem — drop it so browsing recovers.
+// If the call still 401s WITH a token attached, the token itself is rejected
+// (bad signature / expired / wrong issuer): clear it and send the user back
+// to login instead of stranding them on error screens.
 api.interceptors.response.use(
   (r) => r,
   async (err) => {
     const cfg = err?.config;
-    if (err?.response?.status === 401 && cfg && cfg.headers?.Authorization && !cfg._retriedNoAuth) {
+    const hadAuth = !!cfg?.headers?.Authorization;
+    if (err?.response?.status === 401 && hadAuth && !cfg._retriedNoAuth) {
       cfg._retriedNoAuth = true;
       delete cfg.headers.Authorization;
       try {
         return await api.request(cfg);
-      } catch { /* fall through to original error */ }
+      } catch { /* fall through to handling below */ }
+    }
+    if (err?.response?.status === 401 && hadAuth) {
+      delete api.defaults.headers.common.Authorization;
+      localStorage.removeItem('hms.token');
+      localStorage.removeItem('hms.user');
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login?expired=1';
+      }
     }
     const msg = err?.response?.data?.detail || err?.response?.data?.message || err.message;
     return Promise.reject(new Error(msg));

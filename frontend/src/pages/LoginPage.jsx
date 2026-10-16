@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { LogIn, KeyRound, AlertCircle } from 'lucide-react';
 
@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const { login, authClient } = useAuth();
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  const expired = params.get('expired') === '1';
 
   const emailLogin = async (e) => {
     e.preventDefault();
@@ -51,6 +53,11 @@ export default function LoginPage() {
             {error && (
               <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
                 <AlertCircle className="h-4 w-4" /> {error}
+              </div>
+            )}
+            {expired && !error && (
+              <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Your session was rejected — please sign in again with your Neon Auth credentials.
               </div>
             )}
             <form onSubmit={emailLogin} className="space-y-3">
