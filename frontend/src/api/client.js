@@ -6,13 +6,39 @@ export const api = axios.create({
 });
 
 export function setAuthToken(token) {
-  if (token) api.defaults.headers.common.Authorization = `Bearer ${token}`;
-  else delete api.defaults.headers.common.Authorization;
+  if (token && !isExpiredJwt(token)) {
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common.Authorization;
+  }
 }
 
+/** True when the JWT's exp claim is in the past (or payload unreadable as JWT). */
+function isExpiredJwt(token) {
+  try {
+    const seg = token.split('.');
+    if (seg.length !== 3) return true;
+    const payload = JSON.parse(atob(seg[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return !!payload.exp && payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
+// A stale/invalid Bearer poisons even public endpoints (Spring 401s any
+// request with a bad token). Retry once without it; if the anonymous call
+// succeeds the token was the problem — drop it so browsing recovers.
 api.interceptors.response.use(
   (r) => r,
-  (err) => {
+  async (err) => {
+    const cfg = err?.config;
+    if (err?.response?.status === 401 && cfg && cfg.headers?.Authorization && !cfg._retriedNoAuth) {
+      cfg._retriedNoAuth = true;
+      delete cfg.headers.Authorization;
+      try {
+        return await api.request(cfg);
+      } catch { /* fall through to original error */ }
+    }
     const msg = err?.response?.data?.detail || err?.response?.data?.message || err.message;
     return Promise.reject(new Error(msg));
   }
