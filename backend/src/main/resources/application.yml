@@ -66,7 +66,3 @@ management:
   health:
     probes:
       enabled: true
-
-spring:
-  flyway:
-    enabled: false
