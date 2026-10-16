@@ -18,6 +18,10 @@ export default function LoginPage() {
     try {
       const res = await authClient.signIn.email({ email, password });
       if (res?.error) throw new Error(res.error.message || 'Sign-in failed');
+      // Persist the returned token (cookie sessions are third-party here and
+      // browsers block them; the token in the response body always works).
+      const t = res?.data?.token;
+      if (t) login(t, { email });
       nav('/book');
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
