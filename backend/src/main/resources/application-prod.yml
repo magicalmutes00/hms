@@ -13,9 +13,10 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${NEON_AUTH_URL:http://localhost:3000/api/auth}
+          # EdDSA/Ed25519 key served at <auth-url>/jwks — validated by jwk-set-uri.
+          # Managed Better Auth JWTs carry no `iss` claim, so issuer-uri stays empty
+          # (an issuer-uri here would reject every valid token at decode time).
           jwk-set-uri: ${NEON_JWKS_URL:${NEON_AUTH_URL:http://localhost:3000/api/auth}/jwks}
-          audiences: ${JWT_AUDIENCE:}
   jpa:
     properties:
       hibernate:

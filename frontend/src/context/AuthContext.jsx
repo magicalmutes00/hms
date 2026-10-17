@@ -18,8 +18,11 @@ export function AuthProvider({ children }) {
     let cancelled = false;
     (async () => {
       if (!session?.user) { setJwtToken(''); return; }
+      // Primary: Neon Auth stores the JWT at session.access_token (see auth-flow docs).
+      const at = session?.session?.access_token;
+      if (!cancelled && isJwt(at)) { setJwtToken(at); return; }
       try {
-        // Primary: JWT from the set-auth-jwt response header.
+        // Fallback: JWT from the set-auth-jwt response header.
         const headerJwt = await getSessionJwt();
         if (!cancelled && isJwt(headerJwt)) { setJwtToken(headerJwt); return; }
         // Fallback: jwtClient token() endpoint.
@@ -28,9 +31,9 @@ export function AuthProvider({ children }) {
       } catch { /* fall back below */ }
     })();
     return () => { cancelled = true; };
-  }, [session?.user]);
+  }, [session?.user, session?.session?.access_token]);
 
-  const jwt = [jwtToken, session?.session?.token, devToken].find(isJwt) || '';
+  const jwt = [jwtToken, session?.session?.access_token, session?.session?.token, devToken].find(isJwt) || '';
   const user = session?.user
     ? { email: session.user.email, name: session.user.name }
     : (() => { try { return JSON.parse(localStorage.getItem('hms.user') || 'null'); } catch { return null; } })();

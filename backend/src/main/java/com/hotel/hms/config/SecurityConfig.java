@@ -14,10 +14,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @EnableMethodSecurity
+@lombok.RequiredArgsConstructor
 public class SecurityConfig implements WebMvcConfigurer {
 
   @Value("${app.cors.allowed-origins:http://localhost:5173,https://hms-frontend-msgw.onrender.com}")
   private String allowedOrigins;
+
+  private final com.hotel.hms.repository.UserProfileRepository userProfiles;
 
   @Bean
   SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -33,15 +36,25 @@ public class SecurityConfig implements WebMvcConfigurer {
     return http.build();
   }
 
-  /** Maps Neon Auth (Better Auth) JWT claims -> Spring authorities. Expects `role` claim. */
+  /**
+   * Neon Auth JWTs carry `role: "authenticated"` (a Data-API convention), NOT our app roles.
+   * Our roles live in user_profiles, so resolve authorities from the DB keyed by `sub`,
+   * falling back to the claim only when it holds one of our actual roles (custom tokens).
+   */
   @Bean
   JwtAuthenticationConverter jwtConverter() {
     var c = new JwtAuthenticationConverter();
     c.setJwtGrantedAuthoritiesConverter(jwt -> {
-      Object role = jwt.getClaim("role");
-      if (role == null) role = "GUEST";
-      String r = role.toString().toUpperCase().replace("ROLE_", "");
-      return List.of(new SimpleGrantedAuthority("ROLE_" + r));
+      String claim = jwt.getClaimAsString("role");
+      if (claim != null) {
+        String r = claim.toUpperCase().replace("ROLE_", "");
+        if (r.equals("ADMIN") || r.equals("RECEPTIONIST") || r.equals("HOUSEKEEPER") || r.equals("GUEST"))
+          return List.of(new SimpleGrantedAuthority("ROLE_" + r));
+      }
+      String role = userProfiles.findById(jwt.getSubject())
+          .map(u -> u.getRole().name())
+          .orElse("GUEST");
+      return List.of(new SimpleGrantedAuthority("ROLE_" + role));
     });
     c.setPrincipalClaimName("sub");
     return c;
