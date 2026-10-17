@@ -1,6 +1,6 @@
 import { createContext, useContext, useCallback, useEffect, useState } from 'react';
 import { setAuthToken } from '../api/client.js';
-import { authClient, getSessionJwt } from '../lib/authClient.js';
+import { authClient, getJwtToken, getSessionJwt } from '../lib/authClient.js';
 
 // Real Neon Auth session via better-auth, with paste-JWT fallback for local dev.
 const AuthContext = createContext(null);
@@ -18,20 +18,19 @@ export function AuthProvider({ children }) {
     let cancelled = false;
     (async () => {
       if (!session?.user) { setJwtToken(''); return; }
-      // Primary: Neon Auth stores the JWT at session.access_token (see auth-flow docs).
-      const at = session?.session?.access_token;
-      if (!cancelled && isJwt(at)) { setJwtToken(at); return; }
+      // Primary: signed EdDSA JWT from GET /token (exchanges the session cookie).
       try {
-        // Fallback: JWT from the set-auth-jwt response header.
+        const tok = await getJwtToken();
+        if (!cancelled && isJwt(tok)) { setJwtToken(tok); return; }
+      } catch { /* try fallbacks */ }
+      // Fallback: JWT from the set-auth-jwt response header.
+      try {
         const headerJwt = await getSessionJwt();
-        if (!cancelled && isJwt(headerJwt)) { setJwtToken(headerJwt); return; }
-        // Fallback: jwtClient token() endpoint.
-        const { data, error } = await authClient.token();
-        if (!cancelled && !error && isJwt(data?.token)) setJwtToken(data.token);
-      } catch { /* fall back below */ }
+        if (!cancelled && isJwt(headerJwt)) { setJwtToken(headerJwt); }
+      } catch { /* none */ }
     })();
     return () => { cancelled = true; };
-  }, [session?.user, session?.session?.access_token]);
+  }, [session?.user]);
 
   const jwt = [jwtToken, session?.session?.access_token, session?.session?.token, devToken].find(isJwt) || '';
   const user = session?.user

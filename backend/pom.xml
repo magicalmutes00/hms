@@ -47,6 +47,14 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
     </dependency>
+    <!-- Nimbus's EdDSA (Ed25519) verifier relies on Google Tink, which Nimbus marks
+         OPTIONAL and does not pull transitively. Without it, Neon Auth's EdDSA JWTs
+         can never be signature-verified ("no matching key(s) found"). -->
+    <dependency>
+      <groupId>com.google.crypto.tink</groupId>
+      <artifactId>tink</artifactId>
+      <version>1.8.0</version>
+    </dependency>
     <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-core</artifactId>

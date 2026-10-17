@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getJwtToken } from '../lib/authClient.js';
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -25,17 +26,43 @@ function isExpiredJwt(token) {
   }
 }
 
-// A stale/invalid Bearer poisons even public endpoints (Spring 401s any
-// request with a bad token). Retry once without it; if the anonymous call
-// succeeds the token was the problem — drop it so browsing recovers.
-// If the call still 401s WITH a token attached, the token itself is rejected
-// (bad signature / expired / wrong issuer): clear it and send the user back
-// to login instead of stranding them on error screens.
+// Neon Auth JWTs expire in ~15 min. On a 401 with a Bearer token, first try a
+// silent refresh (GET /token exchanges the still-valid session cookie for a
+// fresh JWT) and retry once — this keeps users signed in seamlessly. Only if
+// refresh fails is the token cleared and the user sent to login.
+let refreshing = null;
+async function silentRefresh() {
+  if (!refreshing) {
+    refreshing = getJwtToken()
+      .then((tok) => {
+        if (tok && !isExpiredJwt(tok)) {
+          api.defaults.headers.common.Authorization = `Bearer ${tok}`;
+          return tok;
+        }
+        return '';
+      })
+      .catch(() => '')
+      .finally(() => { refreshing = null; });
+  }
+  return refreshing;
+}
+
 api.interceptors.response.use(
   (r) => r,
   async (err) => {
     const cfg = err?.config;
     const hadAuth = !!cfg?.headers?.Authorization;
+    if (err?.response?.status === 401 && hadAuth && !cfg._retriedRefresh) {
+      cfg._retriedRefresh = true;
+      const fresh = await silentRefresh();
+      if (fresh) {
+        cfg.headers.Authorization = `Bearer ${fresh}`;
+        return api.request(cfg);
+      }
+    }
+    // A stale/invalid Bearer poisons even public endpoints (Spring 401s any
+    // request with a bad token). Retry once without it; if the anonymous call
+    // succeeds the token was the problem — drop it so browsing recovers.
     if (err?.response?.status === 401 && hadAuth && !cfg._retriedNoAuth) {
       cfg._retriedNoAuth = true;
       delete cfg.headers.Authorization;

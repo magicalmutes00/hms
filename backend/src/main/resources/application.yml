@@ -55,6 +55,11 @@ neon:
 app:
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+  auth:
+    # EdDSA (Ed25519) JWKS endpoint. Consumed by EdDsaJwtConfig, our custom
+    # JwtDecoder — Spring's default NimbusJwtDecoder cannot validate Neon's
+    # EdDSA tokens (see EdDsaJwtConfig javadoc).
+    jwk-set-uri: ${NEON_JWKS_URL:${NEON_AUTH_URL:http://localhost:3000/api/auth}/.well-known/jwks.json}
   booking:
     code-length: 8
     max-nights: 90
