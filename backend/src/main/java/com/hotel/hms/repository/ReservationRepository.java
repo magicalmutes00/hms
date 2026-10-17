@@ -4,12 +4,15 @@ import com.hotel.hms.entity.Reservation;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDate;
 import java.util.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface ReservationRepository extends JpaRepository<Reservation, UUID> {
   Optional<Reservation> findByBookingCode(String bookingCode);
   List<Reservation> findByUserIdOrderByCheckInDateDesc(String userId);
+  Page<Reservation> findByStatus(com.hotel.hms.entity.ReservationStatus status, Pageable pageable);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("select r from Reservation r where r.id = :id")

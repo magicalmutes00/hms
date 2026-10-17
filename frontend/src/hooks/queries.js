@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { endpoints } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -34,8 +35,21 @@ export const useAllReservations = () =>
 
 export const useBook = () => {
   const qc = useQueryClient();
+  const last = useRef(null);
   return useMutation({
-    mutationFn: endpoints.book,
+    mutationFn: (body) => {
+      // Same payload retried (double-click / network retry) reuses one key:
+      // the backend replays the first reservation instead of double-booking.
+      const sig = JSON.stringify(body);
+      if (!last.current || last.current.sig !== sig) {
+        last.current = {
+          sig,
+          key: crypto.randomUUID ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        };
+      }
+      return endpoints.book(body, last.current.key);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['rooms'] }),
   });
 };

@@ -11,6 +11,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,8 +25,21 @@ public class ReservationService {
   private final HousekeepingTaskRepository housekeeping;
   private final RoomRepository rooms;
   private final UserProfileRepository users;
+  private final com.hotel.hms.repository.IdempotencyKeyRepository idempotencyKeys;
   private static final SecureRandom RANDOM = new SecureRandom();
   private static final String CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  private static final com.fasterxml.jackson.databind.ObjectMapper JSON =
+      new com.fasterxml.jackson.databind.ObjectMapper()
+          .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+
+  private static String sha256(String s) {
+    try {
+      var md = java.security.MessageDigest.getInstance("SHA-256");
+      return java.util.HexFormat.of().formatHex(md.digest(s.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+    } catch (Exception e) {
+      return Integer.toHexString(s.hashCode());
+    }
+  }
 
   @Value("${app.booking.max-nights:90}") private int maxNights;
 
@@ -33,13 +49,51 @@ public class ReservationService {
   }
 
   @Transactional(readOnly = true)
-  public List<ReservationDto> all() {
-    return reservations.findAll().stream().map(ReservationDto::from).toList();
+  public Page<ReservationDto> all(int page, int size, ReservationStatus status) {
+    var s = status == null ? reservations.findAll(PageRequest.of(page, size, Sort.by("checkInDate").ascending()))
+        : reservations.findByStatus(status, PageRequest.of(page, size, Sort.by("checkInDate").ascending()));
+    return s.map(ReservationDto::from);
   }
 
   /** Defensive booking: pessimistic room lock + overlap check in one transaction. */
   @Transactional
   public ReservationDto book(String userId, String userEmail, String fullName, CreateReservationRequest req) {
+    return book(userId, userEmail, fullName, req, null);
+  }
+
+  /** Same, with optional Idempotency-Key replay protection (same user+key+payload -> same reservation). */
+  @Transactional
+  public ReservationDto book(String userId, String userEmail, String fullName,
+                             CreateReservationRequest req, String idempotencyKey) {
+    if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+      String hash = sha256(idempotencyKey + "||POST /api/reservations||" + req.roomId() + "|"
+          + req.checkInDate() + "|" + req.checkOutDate());
+      var hit = idempotencyKeys.findByUserIdAndKeyHashAndRequestPath(userId, hash, "/api/reservations");
+      if (hit.isPresent() && hit.get().getResponseBody() != null) {
+        try {
+          return JSON.readValue(hit.get().getResponseBody(), ReservationDto.class);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
+          // corrupt replay record: fall through and re-book
+        }
+      }
+    }
+    ReservationDto dto = doBook(userId, userEmail, fullName, req);
+    if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+      String hash = sha256(idempotencyKey + "||POST /api/reservations||" + req.roomId() + "|"
+          + req.checkInDate() + "|" + req.checkOutDate());
+      try {
+        idempotencyKeys.save(IdempotencyKey.builder()
+            .userId(userId).keyHash(hash).requestPath("/api/reservations")
+            .responseBody(JSON.writeValueAsString(dto))
+            .statusCode(200).expiresAt(java.time.OffsetDateTime.now().plusHours(24)).build());
+      } catch (Exception ignored) {
+        // replay protection is best-effort; never fail a successful booking over it
+      }
+    }
+    return dto;
+  }
+
+  private ReservationDto doBook(String userId, String userEmail, String fullName, CreateReservationRequest req) {
     if (!req.checkOutDate().isAfter(req.checkInDate()))
       throw new IllegalArgumentException("checkOutDate must be after checkInDate");
     long nights = ChronoUnit.DAYS.between(req.checkInDate(), req.checkOutDate());

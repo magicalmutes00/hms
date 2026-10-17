@@ -1,13 +1,15 @@
 package com.hotel.hms.controller;
 
-import com.hotel.hms.dto.*;
-import com.hotel.hms.entity.ReservationStatus;
+import com.hotel.hms.dto.ReservationDto;
 import com.hotel.hms.service.ReservationService;
 import jakarta.validation.Valid;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +21,17 @@ public class ReservationController {
 
   private final ReservationService service;
 
+  @PostMapping
+  public ReservationDto book(@Valid @RequestBody com.hotel.hms.dto.CreateReservationRequest req,
+                             @RequestHeader(value = "Idempotency-Key", required = false) String idemKey,
+                             @AuthenticationPrincipal Jwt jwt) {
+    return service.book(jwt.getSubject(),
+        jwt.getClaimAsString("email"),
+        jwt.getClaimAsString("name"),
+        req,
+        idemKey);
+  }
+
   @GetMapping("/mine")
   public List<ReservationDto> mine(@AuthenticationPrincipal Jwt jwt) {
     return service.myReservations(jwt.getSubject());
@@ -26,25 +39,15 @@ public class ReservationController {
 
   @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
   @GetMapping
-  public List<ReservationDto> all() { return service.all(); }
-
-  @PostMapping
-  public ReservationDto book(@AuthenticationPrincipal Jwt jwt,
-                             @Valid @RequestBody CreateReservationRequest req) {
-    return service.book(jwt.getSubject(), jwt.getClaimAsString("email"),
-        jwt.getClaimAsString("name"), req);
+  public Page<ReservationDto> all(@RequestParam(defaultValue="0") int page,
+                                  @RequestParam(defaultValue="20") int size,
+                                  @RequestParam(required=false) com.hotel.hms.entity.ReservationStatus status) {
+    return service.all(page, size, status);
   }
 
   @PreAuthorize("hasAnyRole('ADMIN','RECEPTIONIST')")
   @PatchMapping("/{id}/status")
-  public ReservationDto transition(@PathVariable UUID id, @RequestParam ReservationStatus status) {
+  public ReservationDto transition(@PathVariable UUID id, @RequestParam com.hotel.hms.entity.ReservationStatus status) {
     return service.transition(id, status);
-  }
-
-  @DeleteMapping("/by-code/{code}")
-  public void cancel(@PathVariable String code, Authentication auth) {
-    boolean staff = auth.getAuthorities().stream().anyMatch(a ->
-        a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_RECEPTIONIST"));
-    service.cancelByCode(code, auth.getName(), staff);
   }
 }

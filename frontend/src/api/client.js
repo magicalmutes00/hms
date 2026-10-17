@@ -63,7 +63,9 @@ export const endpoints = {
   availability: (roomId, month) => api.get(`/rooms/${roomId}/availability`, { params: { month } }).then((r) => r.data),
   myReservations: () => api.get('/reservations/mine').then((r) => r.data),
   allReservations: () => api.get('/reservations').then((r) => r.data),
-  book: (body) => api.post('/reservations', body).then((r) => r.data),
+  book: (body, idempotencyKey) => api.post('/reservations', body, {
+    headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
+  }).then((r) => r.data),
   cancelByCode: (code) => api.delete(`/reservations/by-code/${code}`).then((r) => r.data),
   setReservationStatus: (id, status) =>
     api.patch(`/reservations/${id}/status`, null, { params: { status } }).then((r) => r.data),
