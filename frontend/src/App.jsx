@@ -12,11 +12,17 @@ import HousekeepingView from './pages/HousekeepingView.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 const STAFF = ['ADMIN', 'RECEPTIONIST'];
 const HK = ['ADMIN', 'RECEPTIONIST', 'HOUSEKEEPER'];
 
-const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } });
+const qc = new QueryClient({
+  defaultOptions: {
+    queries: { retry: (c, e) => (e?.response?.status === 401 ? false : c < 1), staleTime: 30_000 },
+    mutations: { retry: 0 }
+  }
+});
 
 export default function App() {
   return (
@@ -25,16 +31,18 @@ export default function App() {
         <ToastProvider>
           <BrowserRouter>
             <Navbar />
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/book" element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
-              <Route path="/my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
-              <Route path="/front-desk" element={<ProtectedRoute roles={STAFF}><FrontDeskDashboard /></ProtectedRoute>} />
-              <Route path="/housekeeping" element={<ProtectedRoute roles={HK}><HousekeepingView /></ProtectedRoute>} />
-              <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
-              <Route path="/admin/manage" element={<ProtectedRoute roles={['ADMIN']}><AdminPage /></ProtectedRoute>} />
-            </Routes>
+            <ErrorBoundary>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/book" element={<ProtectedRoute><BookingPage /></ProtectedRoute>} />
+                <Route path="/my-bookings" element={<ProtectedRoute><MyBookingsPage /></ProtectedRoute>} />
+                <Route path="/front-desk" element={<ProtectedRoute roles={STAFF}><FrontDeskDashboard /></ProtectedRoute>} />
+                <Route path="/housekeeping" element={<ProtectedRoute roles={HK}><HousekeepingView /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute roles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin/manage" element={<ProtectedRoute roles={['ADMIN']}><AdminPage /></ProtectedRoute>} />
+              </Routes>
+            </ErrorBoundary>
           </BrowserRouter>
         </ToastProvider>
       </AuthProvider>

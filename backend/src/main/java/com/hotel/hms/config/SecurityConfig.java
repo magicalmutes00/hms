@@ -16,7 +16,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @EnableMethodSecurity
 public class SecurityConfig implements WebMvcConfigurer {
 
-  @Value("${app.cors.allowed-origins:http://localhost:5173}")
+  @Value("${app.cors.allowed-origins:http://localhost:5173,https://hms-frontend-msgw.onrender.com}")
   private String allowedOrigins;
 
   @Bean
@@ -26,7 +26,7 @@ public class SecurityConfig implements WebMvcConfigurer {
       .cors(c -> c.configurationSource(corsSource()))
       .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(a -> a
-        .requestMatchers("/actuator/health", "/v3/api-docs/**").permitAll()
+        .requestMatchers("/actuator/health", "/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/rooms/**", "/api/room-types/**").permitAll()
         .anyRequest().authenticated())
       .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter())));

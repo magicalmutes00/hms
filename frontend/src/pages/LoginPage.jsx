@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { LogIn, KeyRound, AlertCircle } from 'lucide-react';
@@ -13,6 +13,8 @@ export default function LoginPage() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const expired = params.get('expired') === '1';
+  const next = params.get('next') || '/';
+  useEffect(() => { if (isAuthenticated) nav(next, { replace: true }); }, [isAuthenticated]);
 
   const emailLogin = async (e) => {
     e.preventDefault();

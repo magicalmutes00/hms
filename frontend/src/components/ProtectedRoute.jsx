@@ -1,11 +1,13 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useMe } from '../hooks/queries.js';
 
 export default function ProtectedRoute({ children, roles }) {
   const { isAuthenticated } = useAuth();
   const { data: me, isLoading } = useMe();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const nav = useNavigate();
+  const loc = useLocation();
+  if (!isAuthenticated) return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />;
   if (roles) {
     if (isLoading) {
       return (
