@@ -1,0 +1,49 @@
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: always
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${NEON_AUTH_URL:http://localhost:3000/api/auth}
+          jwk-set-uri: ${NEON_JWKS_URL:${NEON_AUTH_URL:http://localhost:3000/api/auth}/jwks}
+          audiences: ${JWT_AUDIENCE:}
+  jpa:
+    properties:
+      hibernate:
+        connection:
+          provider_disables_autocommit: true
+        format_sql: false
+        generate_statistics: false
+  task:
+    execution:
+      pool:
+        core-size: 2
+        max-size: 8
+        queue-capacity: 100
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
