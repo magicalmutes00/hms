@@ -78,6 +78,8 @@ export const endpoints = {
   adminStats: () => api.get('/admin/stats').then((r) => r.data),
   createRoomType: (body) => api.post('/room-types', body).then((r) => r.data),
   createRoom: (body) => api.post('/rooms', body).then((r) => r.data),
+  deleteRoom: (id) => api.delete(`/rooms/${id}`).then((r) => r.data),
+  deleteRoomType: (id) => api.delete(`/room-types/${id}`).then((r) => r.data),
   adminUsers: () => api.get('/admin/users').then((r) => r.data),
   setUserRole: (id, role) => api.patch(`/admin/users/${id}/role`, null, { params: { role } }).then((r) => r.data),
 };

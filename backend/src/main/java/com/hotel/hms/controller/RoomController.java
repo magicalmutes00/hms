@@ -55,4 +55,13 @@ public class RoomController {
   public RoomTypeDto createType(@Valid @RequestBody UpsertRoomTypeRequest req) {
     return rooms.createType(req);
   }
+
+  /** Soft delete — room disappears from search; historical reservations keep their join. */
+  @PreAuthorize("hasRole('ADMIN')")
+  @DeleteMapping("/rooms/{id}")
+  public void deleteRoom(@PathVariable UUID id) { rooms.softDelete(id); }
+
+  @PreAuthorize("hasRole('ADMIN')")
+  @DeleteMapping("/room-types/{id}")
+  public void deleteType(@PathVariable UUID id) { rooms.softDeleteType(id); }
 }

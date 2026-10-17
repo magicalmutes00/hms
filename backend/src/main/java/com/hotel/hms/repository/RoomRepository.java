@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 public interface RoomRepository extends JpaRepository<Room, UUID> {
+  boolean existsByRoomType(com.hotel.hms.entity.RoomType roomType);
   Optional<Room> findByRoomNumber(String roomNumber);
 
   /** Pessimistic lock for booking path — prevents double-booking race. */

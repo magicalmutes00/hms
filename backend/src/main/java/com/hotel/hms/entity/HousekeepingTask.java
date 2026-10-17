@@ -18,7 +18,13 @@ public class HousekeepingTask {
   @Builder.Default private TaskPriority priority = TaskPriority.MEDIUM;
   @Column(columnDefinition = "TEXT") private String notes;
   @Column(name = "created_at", updatable = false) private OffsetDateTime createdAt;
+  @Column(name = "updated_at") private OffsetDateTime updatedAt;
   @Column(name = "completed_at") private OffsetDateTime completedAt;
 
-  @PrePersist void prePersist() { if (createdAt == null) createdAt = OffsetDateTime.now(); }
+  @PrePersist void prePersist() {
+    OffsetDateTime now = OffsetDateTime.now();
+    if (createdAt == null) createdAt = now;
+    updatedAt = now;
+  }
+  @PreUpdate void preUpdate() { updatedAt = OffsetDateTime.now(); }
 }

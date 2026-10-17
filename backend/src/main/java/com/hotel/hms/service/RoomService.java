@@ -68,4 +68,19 @@ public class RoomService {
         .imageUrls(req.imageUrls() != null ? req.imageUrls() : List.of()).build();
     return RoomTypeDto.from(types.save(t));
   }
+
+  /** Soft delete (via @SQLDelete). Refuses while the room has active/future stays. */
+  @Transactional public void softDelete(UUID id) {
+    Room r = rooms.findById(id).orElseThrow(() -> new ResourceNotFoundException("Room not found"));
+    if (reservations.existsOverlapping(r.getId(), LocalDate.now(), LocalDate.now().plusDays(3650)))
+      throw new com.hotel.hms.exception.ConflictException("Room has active/future reservations — cannot delete");
+    rooms.delete(r);
+  }
+
+  @Transactional public void softDeleteType(UUID id) {
+    RoomType t = types.findById(id).orElseThrow(() -> new ResourceNotFoundException("RoomType not found"));
+    if (rooms.existsByRoomType(t))
+      throw new com.hotel.hms.exception.ConflictException("Rooms still reference this type — delete/reassign them first");
+    types.delete(t);
+  }
 }

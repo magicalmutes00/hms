@@ -8,6 +8,7 @@ import FileUploader from '../components/FileUploader.jsx';
 export default function AdminPage() {
   const qc = useQueryClient();
   const { data: types = [] } = useRoomTypes();
+  const { data: allRooms = [] } = useQuery({ queryKey: ['all-rooms'], queryFn: () => endpoints.rooms({}) });
   const { data: users = [] } = useQuery({ queryKey: ['admin-users'], queryFn: endpoints.adminUsers });
   const [form, setForm] = useState({ title: '', basePrice: '', capacity: 2, description: '', amenities: '', images: [] });
   const [roomForm, setRoomForm] = useState({ roomNumber: '', roomTypeId: '', floor: 1 });
@@ -33,6 +34,15 @@ export default function AdminPage() {
   const setRole = async (id, role) => {
     try { await endpoints.setUserRole(id, role); qc.invalidateQueries({ queryKey: ['admin-users'] }); }
     catch (e) { setMsg(e.message); }
+  };
+
+  const remove = async (fn, id, what, queries) => {
+    if (!window.confirm(`Delete this ${what}? Existing reservations keep their history.`)) return;
+    try {
+      await fn(id);
+      setMsg(`${what} deleted`);
+      queries.forEach((q) => qc.invalidateQueries({ queryKey: q }));
+    } catch (e) { setMsg(e.message); }
   };
 
   return (
@@ -66,6 +76,32 @@ export default function AdminPage() {
           </select>
           <input placeholder="Floor" type="number" value={roomForm.floor} onChange={(e) => setRoomForm({ ...roomForm, floor: e.target.value })} className="border rounded px-2 py-1 w-24" />
           <button onClick={() => createRoom.mutate()} className="bg-blue-600 text-white px-4 py-1 rounded">Create room</button>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="font-bold mb-2">Rooms</h2>
+        <div className="grid gap-1 md:grid-cols-2">
+          {allRooms.map((r) => (
+            <div key={r.id} className="border rounded p-2 flex items-center gap-3 text-sm">
+              <span className="flex-1">{r.roomNumber} · floor {r.floor} · {r.status}</span>
+              <button onClick={() => remove(endpoints.deleteRoom, r.id, 'room', ['all-rooms', 'rooms'])}
+                className="text-red-600 hover:underline text-xs">Delete</button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="font-bold mb-2">Room types</h2>
+        <div className="space-y-1">
+          {types.map((t) => (
+            <div key={t.id} className="border rounded p-2 flex items-center gap-3 text-sm">
+              <span className="flex-1">{t.title} — ${t.basePrice}/night · cap {t.capacity}</span>
+              <button onClick={() => remove(endpoints.deleteRoomType, t.id, 'room type', ['room-types'])}
+                className="text-red-600 hover:underline text-xs">Delete</button>
+            </div>
+          ))}
         </div>
       </section>
 

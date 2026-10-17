@@ -4,8 +4,12 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 @Entity @Table(name = "rooms")
+@SQLDelete(sql = "UPDATE rooms SET deleted_at = now() WHERE id = ?")
+@Where(clause = "deleted_at IS NULL")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Room {
   @Id @GeneratedValue(strategy = GenerationType.UUID) private UUID id;
@@ -17,6 +21,13 @@ public class Room {
   @Builder.Default private RoomStatus status = RoomStatus.AVAILABLE;
   @Version private Long version;
   @Column(name = "created_at", updatable = false) private OffsetDateTime createdAt;
+  @Column(name = "updated_at") private OffsetDateTime updatedAt;
+  @Column(name = "deleted_at") private OffsetDateTime deletedAt;
 
-  @PrePersist void prePersist() { if (createdAt == null) createdAt = OffsetDateTime.now(); }
+  @PrePersist void prePersist() {
+    OffsetDateTime now = OffsetDateTime.now();
+    if (createdAt == null) createdAt = now;
+    updatedAt = now;
+  }
+  @PreUpdate void preUpdate() { updatedAt = OffsetDateTime.now(); }
 }

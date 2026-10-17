@@ -9,6 +9,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity @Table(name = "room_types")
+@org.hibernate.annotations.SQLDelete(sql = "UPDATE room_types SET deleted_at = now() WHERE id = ?")
+@org.hibernate.annotations.Where(clause = "deleted_at IS NULL")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class RoomType {
   @Id @GeneratedValue(strategy = GenerationType.UUID) private UUID id;
@@ -22,6 +24,13 @@ public class RoomType {
   @Column(name = "image_urls", columnDefinition = "text[]") @JdbcTypeCode(SqlTypes.ARRAY)
   @Builder.Default private List<String> imageUrls = new ArrayList<>();
   @Column(name = "created_at", updatable = false) private OffsetDateTime createdAt;
+  @Column(name = "updated_at") private OffsetDateTime updatedAt;
+  @Column(name = "deleted_at") private OffsetDateTime deletedAt;
 
-  @PrePersist void prePersist() { if (createdAt == null) createdAt = OffsetDateTime.now(); }
+  @PrePersist void prePersist() {
+    OffsetDateTime now = OffsetDateTime.now();
+    if (createdAt == null) createdAt = now;
+    updatedAt = now;
+  }
+  @PreUpdate void preUpdate() { updatedAt = OffsetDateTime.now(); }
 }
