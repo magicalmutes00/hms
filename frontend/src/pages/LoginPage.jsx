@@ -9,7 +9,7 @@ export default function LoginPage() {
   const [jwt, setJwt] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, authClient } = useAuth();
+  const { login, authClient, isAuthenticated } = useAuth();
   const nav = useNavigate();
   const [params] = useSearchParams();
   const expired = params.get('expired') === '1';
