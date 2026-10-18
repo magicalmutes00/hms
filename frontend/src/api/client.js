@@ -89,7 +89,24 @@ export const endpoints = {
   roomTypes: () => api.get('/room-types').then((r) => r.data),
   availability: (roomId, month) => api.get(`/rooms/${roomId}/availability`, { params: { month } }).then((r) => r.data),
   myReservations: () => api.get('/reservations/mine').then((r) => r.data),
-  allReservations: () => api.get('/reservations').then((r) => r.data),
+  // GET /reservations is the only paginated endpoint (Page<ReservationDto>
+  // serialises to {content, totalPages, totalElements}). The Front Desk board
+  // renders the whole working set and filters it client-side, so walk every
+  // page and flatten — handing the board the Page object itself made
+  // `data.filter(...)` throw "e.filter is not a function" and blank the page.
+  allReservations: async () => {
+    const size = 50;
+    const items = [];
+    for (let page = 0; page < 100; page += 1) {
+      const { data } = await api.get('/reservations', { params: { page, size } });
+      if (Array.isArray(data)) return data; // non-paginated shape: take as-is
+      const chunk = Array.isArray(data?.content) ? data.content : [];
+      items.push(...chunk);
+      if (chunk.length === 0 || page + 1 >= (data?.totalPages ?? 1)) break;
+      if (typeof data?.totalElements === 'number' && items.length >= data.totalElements) break;
+    }
+    return items;
+  },
   book: (body, idempotencyKey) => api.post('/reservations', body, {
     headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
   }).then((r) => r.data),
