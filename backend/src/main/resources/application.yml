@@ -9,7 +9,18 @@ spring:
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
+      # Bound pool *checkout* waits. NOTE this does NOT cover the initial TCP/TLS
+      # connect — that is governed by the pgjdbc driver properties below (which
+      # default to 0 = infinite, causing a silent startup hang on a stalled link).
       connection-timeout: 10000
+      # Fail fast + surface the real error instead of hanging startup forever.
+      # connectTimeout/socketTimeout are in SECONDS (pgjdbc). connectTimeout caps
+      # TCP connect; socketTimeout caps a stalled TLS/auth/read so a black-holed
+      # link aborts with PSQLException rather than blocking Tomcat's port bind.
+      data-source-properties:
+        connectTimeout: 15
+        socketTimeout: 60
+        ApplicationName: hms-backend
   jpa:
     hibernate:
       ddl-auto: validate
