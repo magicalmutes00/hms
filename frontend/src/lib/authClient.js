@@ -13,6 +13,26 @@ export const authClient = createAuthClient({
 const isJwt = (t) => typeof t === 'string' && t.split('.').length === 3;
 
 /**
+ * True only for a real JOSE token: three segments whose *header* decodes to
+ * {"alg":"..."}. Neon Auth's opaque session tokens (token.signature) also have
+ * three segments, so a naive check accepts them — and sending one as a Bearer
+ * is rejected by the API with 401 on every request.
+ */
+export function isRealJwt(t) {
+  if (typeof t !== 'string') return false;
+  const seg = t.split('.');
+  if (seg.length !== 3) return false;
+  try {
+    const b64 = seg[0].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    const header = JSON.parse(atob(padded));
+    return typeof header.alg === 'string' && header.alg.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Fetch a signed EdDSA JWT from Neon Auth. The browser holds an HttpOnly
  * session cookie (`__Secure-neon-auth.session_token`); GET /token exchanges
  * it for a short-lived JWT. We call the endpoint directly for reliability

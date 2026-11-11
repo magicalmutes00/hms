@@ -4,8 +4,10 @@ import { endpoints } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export const useMe = () => {
-  const { isAuthenticated } = useAuth();
-  return useQuery({ queryKey: ['me'], queryFn: endpoints.me, enabled: isAuthenticated });
+  const { isAuthenticated, token } = useAuth();
+  // Gated on a usable JWT so the profile call never fires unauthenticated
+  // (which was a guaranteed 401 + silent-refresh round trip on every load).
+  return useQuery({ queryKey: ['me'], queryFn: endpoints.me, enabled: isAuthenticated && !!token });
 };
 
 export const useAvailability = (roomId, month) =>
