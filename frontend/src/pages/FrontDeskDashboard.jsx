@@ -6,6 +6,25 @@ import { useToast } from '../components/Toast.jsx';
 
 const FILTERS = ['ALL', 'CONFIRMED', 'CHECKED_IN', 'CHECKED_OUT', 'CANCELLED', 'PENDING'];
 
+// Mirror of the backend's ReservationService.validTransition map: offer only
+// the actions the API will accept, so the board never renders a button that
+// can only fail with 409 (e.g. Check-in on a CHECKED_OUT stay).
+const ACTIONS = {
+  PENDING: [
+    { to: 'CONFIRMED', label: 'Confirm', cls: 'border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100' },
+    { to: 'CANCELLED', label: 'Cancel', cls: 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' },
+  ],
+  CONFIRMED: [
+    { to: 'CHECKED_IN', label: 'Check-in', cls: 'border-slate-200 hover:bg-slate-50' },
+    { to: 'CANCELLED', label: 'Cancel', cls: 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' },
+  ],
+  CHECKED_IN: [
+    { to: 'CHECKED_OUT', label: 'Check-out', cls: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100' },
+  ],
+  CHECKED_OUT: [],
+  CANCELLED: [],
+};
+
 export default function FrontDeskDashboard() {
   const { data = [], isLoading } = useAllReservations();
   const { data: rooms = [] } = useRooms();
@@ -114,9 +133,15 @@ export default function FrontDeskDashboard() {
                     <td className="px-4 py-2.5"><span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${statusChip(r.status)}`}>{r.status}</span></td>
                     <td className="px-4 py-2.5 text-right">
                       <div className="flex justify-end gap-1.5">
-                        <button onClick={() => setStatus(r.id, 'CHECKED_IN')} disabled={busy === `${r.id}:CHECKED_IN`} className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium hover:bg-slate-50 disabled:opacity-40">Check-in</button>
-                        <button onClick={() => setStatus(r.id, 'CHECKED_OUT')} disabled={busy === `${r.id}:CHECKED_OUT`} className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100 disabled:opacity-40">Check-out</button>
-                        <button onClick={() => setStatus(r.id, 'CANCELLED')} disabled={busy === `${r.id}:CANCELLED`} className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-40">Cancel</button>
+                        {(ACTIONS[r.status] || []).map((a) => (
+                          <button key={a.to} onClick={() => setStatus(r.id, a.to)} disabled={busy === `${r.id}:${a.to}`}
+                            className={`rounded-md border px-2 py-1 text-xs font-medium disabled:opacity-40 ${a.cls}`}>
+                            {a.label}
+                          </button>
+                        ))}
+                        {(ACTIONS[r.status] || []).length === 0 && (
+                          <span className="text-xs text-slate-300" title="No actions available in this status">—</span>
+                        )}
                       </div>
                     </td>
                   </tr>
